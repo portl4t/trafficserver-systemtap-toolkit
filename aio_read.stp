@@ -41,6 +41,14 @@ probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2606") {
     }
 }
 
+probe timer.s(3)
+{
+    foreach ([u, p] in dct)
+        printf("%s, %s: %d\n", u, p, dct[u, p]);
+
+    delete dct
+}
+
 probe end {
     foreach ([u, p] in dct)
         printf("%s, %s: %d\n", u, p, dct[u, p]);
