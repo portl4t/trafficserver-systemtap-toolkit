@@ -1,0 +1,37 @@
+// sudo stap -v ramcut.stp
+
+
+global dct;
+
+probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2771") {
+
+    if ($this->doc_len > 4194304) {
+        ui = $this->request->m_http->u->req->m_url_impl;
+
+        ph = @cast(ui, "URLImpl")->m_ptr_host;
+        lh = @cast(ui, "URLImpl")->m_len_host;
+        sh = user_string_n(ph ,lh);
+
+        pp = @cast(ui, "URLImpl")->m_ptr_path;
+        lp = @cast(ui, "URLImpl")->m_len_path;
+        sp = user_string_n(pp ,lp);
+
+        url = "http://" . sh . "/" . sp;
+
+        if ($this->doc_len > 0) {
+            dct[url, $this->doc_len] += $doc->len;
+
+        } else {
+            dct[url, $doc->total_len] += $doc->len;
+        }
+    }
+}
+
+probe timer.s(2)
+{
+    foreach ([s, t] in dct) {
+        printf("dct[%s, %d] = %d\n", s, t, dct[s, t]);
+    }
+
+    delete dct
+}
