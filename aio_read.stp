@@ -1,0 +1,48 @@
+/*
+    sudo stap -v aio_read.stp
+
+    This script is used to retrieve all the read request to the disk with related url and disk path.
+
+    code:
+    2526   int CacheVC::handleRead(...)
+
+    2603   io.action = this;
+    2604   io.thread = mutex->thread_holding->tt == DEDICATED ? AIO_CALLBACK_THREAD_ANY : mutex->thread_holding;
+    2605   SET_HANDLER(&CacheVC::handleReadDone);
+    2606   ink_assert(ink_aio_read(&io) >= 0);
+    2607   CACHE_DEBUG_INCREMENT_DYN_STAT(cache_pread_count_stat);
+    2608   return EVENT_CONT;
+
+    output:
+    http://192.168.131.128/am.txt, /dev/sdb: 3072
+    http://192.168.131.128/slayer.txt, /dev/sdb: 3072
+    http://192.168.131.128/sm.pdf, /dev/sdc: 42535936
+*/
+
+global dct;
+
+probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2606") {
+    if ($this->request->m_http != NULL) {
+        ui = $this->request->m_http->u->req->m_url_impl;
+        pth = $this->vol->path;
+        n = $this->io->aiocb->aio_nbytes;
+
+        ph = @cast(ui, "URLImpl")->m_ptr_host;
+        lh = @cast(ui, "URLImpl")->m_len_host;
+        sh = user_string_n(ph ,lh);
+
+        pp = @cast(ui, "URLImpl")->m_ptr_path;
+        lp = @cast(ui, "URLImpl")->m_len_path;
+        sp = user_string_n(pp ,lp);
+
+        url = "http://" . sh . "/" . sp;
+
+        dct[url, user_string(pth)] += n;
+    }
+}
+
+probe end {
+    foreach ([u, p] in dct)
+        printf("%s, %s: %d\n", u, p, dct[u, p]);
+}
+
