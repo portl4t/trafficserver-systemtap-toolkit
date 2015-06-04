@@ -1,11 +1,30 @@
-// sudo stap -v ramcut.stp
+/*
+    sudo stap -v ramcut.stp
 
+    This script is used to retrieve all the urls which is too big to be put into the ram.
+
+    int CacheVC::handleReadDone(...)
+
+    2769         cutoff_check = ((!doc_len && (int64_t)doc->total_len < cache_config_ram_cache_cutoff)
+    2770                         || (doc_len && (int64_t)doc_len < cache_config_ram_cache_cutoff)
+    2771                         || !cache_config_ram_cache_cutoff || (params && params->cache_force_in_ram));
+    2772         // temp solution for prevent crash for buf from malloc but freelist
+    2773         if (cutoff_check && !f.doc_from_ram_cache && buf.m_ptr->_size_index >= 0) {
+    2774           if (!f.ram_fixup) {
+    2775             uint64_t o = dir_get_offset(&dir);
+    2776             vol->ram_cache->put(read_key, buf, doc->len, http_copy_hdr, (uint32_t)(o >> 32), (uint32_t)o);
+    2777           } else {
+    2778             vol->ram_cache->put(read_key, buf, doc->len, http_copy_hdr, (uint32_t)(dir_off>>32), (uint32_t)dir_off);
+    2779           }
+    2780         }
+
+*/
 
 global dct;
 
 probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2771") {
 
-    if ($this->doc_len > 4194304) {
+    if ($this->doc_len > 4194304 && $this->request->m_http != NULL) {
         ui = $this->request->m_http->u->req->m_url_impl;
 
         ph = @cast(ui, "URLImpl")->m_ptr_host;
