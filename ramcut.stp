@@ -22,7 +22,7 @@
 
 global dct;
 
-probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2771") {
+probe process("/usr/bin/traffic_server").statement("*@Cache.cc:2774") {
 
     if ($this->doc_len > 4194304 && $this->request->m_http != NULL) {
         ui = $this->request->m_http->u->req->m_url_impl;
